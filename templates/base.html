@@ -1,0 +1,163 @@
+{% load static %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel='stylesheet' href="{% static 'css/modal.css'%}">
+    {% block css %}{% endblock  %}
+</head>
+
+<body >
+
+
+    <div class="nav">
+        <label for="nav-toggle"><span id="nav-toggle-label"></span></label><input type="checkbox" id="nav-toggle">
+        <span>Welcome {% if request.user.is_authenticated %} {{request.user}}{% endif %}</span>
+            {% if request.path == '/linegraph/' and request.user.is_authenticated %}
+        <span id='nav-point' class='point'>{{point}} points available</span>
+            {% endif %}
+        <ul>
+            <li> <a href="{% url 'index' %}">Home </a> </li>
+            <li> <a href="{% url 'linegraph' %}"> Linegraph </a>  </li>
+            <li> <a href="{% url 'funymous' %}"> Funymous </a>  </li>
+                {% if request.user.is_authenticated %}
+            <li><a id='buy-pts' href="#">Buy Points</a></li>
+            <li><a href="{% url 'logout' %}">Logout</a></li>
+                {% else %}
+            <li><a href="{% url 'register' %}">Signup</a></li>
+            <li><a href="{% url 'login' %}">Login</a></li>
+                {% endif %}
+        </ul>
+    </div>
+
+
+    {% block body %}
+
+    {% endblock %}
+
+
+
+    <footer><a href='https://wa.me/message/PW6GRU2IZ4WFC1'>CONTACT US <i class="fa fa-whatsapp" style="margin:5px;font-size:24px"></i></a>
+        <span id="call"><i class="fa fa-phone" style="margin:5px;font-size:24px"></i> +2348151725194</span>
+    </footer>
+
+    <div id='modal-dark' class='dark'>
+        <form id="paymentForm" class='modal'>
+            <center>
+                <h2>PAYMENT INFO  <button  id='close'>&times</button></h2>
+            </center>
+            <div id="labelaligner">
+                {% comment %} <label style='display:none' for='email-address'>Email
+                    <input  type="email" id="email-address"  />
+                </label> {% endcomment %}
+                <label for='amount'>Amount
+                    <input type="number" id="amount"  />
+                </label>
+                <span class='minwarn'>min amount is 200NGN</span>
+                <label for='point'>Points
+                    <input type="number" id="point" value='3' disabled/>
+                </label>
+                <button id='pay'  type="submit" > Pay </button>
+            </div>
+        </form>
+    </div>
+
+    <script src='{% static "js/jquery-3.6.0.min.js"%}'></script>
+    <script>
+        var paymentForm = document.getElementById('paymentForm');
+
+        $(paymentForm).on("input", '#amount', function(event) {
+           /*code to check amount val and divide by 20 and write to point val*/
+            var toBeRounded = ($("#amount").val()) / 20
+            toBeRounded = Math.round(toBeRounded)
+            $('#point').val(toBeRounded)
+            console.log(toBeRounded)
+            /*code to check min amount */
+            if ($("#amount").val() < 200) {
+                $('#pay').attr('disabled', true);
+                $('.minwarn').css( 'display', 'inline' );}
+            else{
+                $('#pay').attr('disabled', false);
+                $('.minwarn').css( 'display', 'none' );}
+
+
+        });
+
+        /*code open modal */
+        $(document).on("click", '#buy-pts', function(event) {
+            $('#modal-dark').css( 'display', 'block' );
+            $('#paymentForm').css( 'display', 'block' );
+
+            });
+
+        /*code close modal */
+        $(document).on("click", '#close', function(event) {
+            event.preventDefault();
+            $('#modal-dark').css( 'display', 'none' );
+
+            var amount = $("#amount").val()
+
+           
+            
+            
+            });
+
+            $(document).on("click", '#pay',
+            function payWithPaystack(event) {
+                event.preventDefault()
+                var amount = $("#amount").val() ;
+                var handler = PaystackPop.setup({
+                    key: 'pk_live_34b9b38f60e47db520b38980229bc9bfa2d93405', // Replace with your public key
+                    email: 'abhuluimendestiny@gmail.com',
+                    amount: amount * 100,//  the amount value is multiplied by 100 to convert to the lowest currency unit
+                    currency: 'NGN', // Use GHS for Ghana Cedis or USD for US Dollars
+                    //ref: 'YOUR_REFERENCE', // Replace with a reference you generated
+                    callback: function(response) {
+                    //this happens after the payment is completed successfully
+                    var reference = response.reference;
+                    alert('Payment complete! Reference: ' + reference);
+                    // Make an AJAX call to your server with the reference to verify the transaction
+                    
+                    $.ajax({
+                        type:"GET",
+                        url: "{% url 'verifyPayment' %}",
+                        data: {
+                        'amount': parseFloat(amount),
+                        },
+                        contentType : 'application/json',
+                        dataType: 'json',
+                        error: function (request, error) {
+                            console.log(arguments);
+                            alert(" Can't do because: " + error);
+                        },
+                        success: function (data) {
+                            alert(`${data.addedPoints} points has being added to your account`);
+                            console.log(data.addedPoints, data.totalPoints);
+                            $('#nav-point').text(`${data.totalPoints} points available`);
+                        }
+                    });
+    
+    
+                },
+                onClose: function() {
+                  alert('Transaction was not completed, window closed.');
+                },
+              });
+              handler.openIframe();
+    
+            });
+
+         {% comment %} paymentForm.addEventListener('submit', payWithPaystack, false); {% endcomment %}
+        
+    </script>
+    <script src='https://js.paystack.co/v1/inline.js'></script>
+    {% block script %}   {% endblock %}
+</body>
+
+
+</html>
